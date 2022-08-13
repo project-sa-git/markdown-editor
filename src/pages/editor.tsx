@@ -1,14 +1,15 @@
 import * as React from 'react'
 import styled from 'styled-components'
 import { useStateWithStorage } from '../hooks/use_state_with_storage'
-import * as ReactMarkdown from 'react-markdown'
 import { putMemo } from '../indexeddb/memos'
 import { Button } from '../components/button'
 import { SaveModal } from '../components/save_modal'
 import { Link } from 'react-router-dom'
 import { Header } from '../components/header'
+import ConvertMarkdownWorker from 'worker-loader!../worker/convert_markdown_worker'
 
-const { useState } = React
+const convertMarkdownWorker = new ConvertMarkdownWorker()
+const { useState, useEffect } = React
 
 const Wrapper = styled.div`
   bottom: 0;
@@ -64,6 +65,20 @@ export const Editor: React.FC<Props> = (props) => {
   // モーダルを表示するかどうかのフラグを管理
   const [showModal, setShowModal] = useState(false)
 
+  // HTML の文字列を管理する状態を用意します。
+  const [html, setHtml] = useState('')
+
+  useEffect(() => {
+    // Web Worker から受け取った処理結果（HTML）で状態を更新
+    convertMarkdownWorker.onmessage = (event) => {
+      setHtml(event.data.html)
+    }
+  }, [])
+
+  useEffect(() => {
+    convertMarkdownWorker.postMessage(text)
+  }, [text])
+
   return (
     // この空のタグは <React.Fragment> を短縮した書き方で、実際には描画されないタグ
     <>
@@ -83,7 +98,8 @@ export const Editor: React.FC<Props> = (props) => {
             value={text}
           />
         <Preview>
-          <ReactMarkdown>{text}</ReactMarkdown>
+        {/* <div dangerouslySetInnerHTML={{ __html: html }} /> */}
+          <div dangerouslySetInnerHTML={{ __html: html }} />
         </Preview>
       </Wrapper>
       {showModal && (
